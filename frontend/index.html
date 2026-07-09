@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Cat or Dog?</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --ink: #14171c;
+    --panel: #1c2129;
+    --panel-line: #2b323d;
+    --paper: #eef0f3;
+    --paper-dim: #9aa3af;
+    --amber: #e3b23c;
+    --amber-dim: #a17f2c;
+    --good: #6fbf8a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 10%, #202632 0%, transparent 45%),
+      radial-gradient(circle at 85% 90%, #1a2e28 0%, transparent 40%),
+      var(--ink);
+    color: var(--paper);
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 18px;
+    padding: 40px 36px 32px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: -80px;
+    right: -80px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(227,178,60,0.18), transparent 70%);
+  }
+
+  .eyebrow {
+    font-family: "Courier New", monospace;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--amber);
+    margin: 0 0 6px;
+  }
+
+  h1 {
+    font-size: 30px;
+    margin: 0 0 6px;
+    font-weight: 400;
+  }
+
+  p.sub {
+    color: var(--paper-dim);
+    margin: 0 0 28px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .dropzone {
+    border: 1.5px dashed var(--panel-line);
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    background: rgba(255,255,255,0.015);
+  }
+
+  .dropzone.drag {
+    border-color: var(--amber);
+    background: rgba(227,178,60,0.06);
+  }
+
+  .dropzone input { display: none; }
+
+  .dropzone .icon {
+    font-size: 30px;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+
+  .dropzone .hint {
+    color: var(--paper-dim);
+    font-size: 13px;
+    font-family: "Courier New", monospace;
+  }
+
+  .preview-wrap {
+    margin-top: 22px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .preview-img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--panel-line);
+    flex-shrink: 0;
+  }
+
+  .result-area {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .scan-line {
+    font-family: "Courier New", monospace;
+    font-size: 13px;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .scan-line .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.25; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .result-label {
+    font-size: 26px;
+    margin: 4px 0 10px;
+    text-transform: capitalize;
+  }
+
+  .result-label .tag {
+    font-size: 12px;
+    font-family: "Courier New", monospace;
+    color: var(--paper-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .meter {
+    height: 8px;
+    border-radius: 6px;
+    background: #101318;
+    overflow: hidden;
+    border: 1px solid var(--panel-line);
+  }
+
+  .meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+    transition: width 0.5s ease;
+  }
+
+  .meter-caption {
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    color: var(--paper-dim);
+    margin-top: 6px;
+  }
+
+  .breakdown {
+    margin-top: 16px;
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    color: var(--paper-dim);
+    display: flex;
+    gap: 18px;
+  }
+
+  .breakdown b { color: var(--paper); }
+
+  .error {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: rgba(200,80,80,0.12);
+    border: 1px solid rgba(200,80,80,0.35);
+    border-radius: 10px;
+    color: #e08a8a;
+    font-size: 13px;
+    font-family: "Courier New", monospace;
+  }
+
+  .reset-btn {
+    margin-top: 20px;
+    background: none;
+    border: 1px solid var(--panel-line);
+    color: var(--paper-dim);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .reset-btn:hover { border-color: var(--amber); color: var(--amber); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+
+<script type="text/babel">
+const { useState, useCallback, useRef } = React;
+
+// Point this at your FastAPI server (see backend/main.py).
+const API_URL = "http://localhost:8000/predict";
+
+function App() {
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const inputRef = useRef(null);
+
+  const handleFile = useCallback((selected) => {
+    if (!selected || !selected.type.startsWith("image/")) {
+      setError("That doesn't look like an image file. Try a jpg or png.");
+      return;
+    }
+    setError(null);
+    setResult(null);
+    setFile(selected);
+    setPreviewUrl(URL.createObjectURL(selected));
+    submitFile(selected);
+  }, []);
+
+  const submitFile = async (selected) => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", selected);
+      const response = await fetch(API_URL, { method: "POST", body: formData });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "The server couldn't process that image.");
+      }
+      setResult(data);
+    } catch (err) {
+      setError(
+        err.message === "Failed to fetch"
+          ? "Can't reach the backend. Is it running at " + API_URL + "?"
+          : err.message
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const reset = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    setResult(null);
+    setError(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Image Classifier · VGG16</p>
+      <h1>Cat or dog?</h1>
+      <p className="sub">Upload a photo and the model will tell you which one it sees, with a confidence score.</p>
+
+      <div
+        className={"dropzone" + (dragging ? " drag" : "")}
+        onClick={() => inputRef.current && inputRef.current.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+      >
+        <span className="icon">🐾</span>
+        <div>{file ? file.name : "Click to choose a photo, or drag one here"}</div>
+        <div className="hint" style={{marginTop: "8px"}}>JPG or PNG</div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+        />
+      </div>
+
+      {previewUrl && (
+        <div className="preview-wrap">
+          <img src={previewUrl} alt="preview" className="preview-img" />
+          <div className="result-area">
+            {loading && (
+              <div className="scan-line">
+                <span className="dot"></span> scanning image…
+              </div>
+            )}
+
+            {result && !loading && (
+              <div>
+                <span className="tag">Prediction</span>
+                <div className="result-label">
+                  {result.label === "dog" ? "🐶 " : "🐱 "}{result.label}
+                </div>
+                <div className="meter">
+                  <div className="meter-fill" style={{ width: (result.confidence * 100) + "%" }}></div>
+                </div>
+                <div className="meter-caption">{(result.confidence * 100).toFixed(1)}% confident</div>
+                <div className="breakdown">
+                  <span>cat <b>{(result.probabilities.cat * 100).toFixed(1)}%</b></span>
+                  <span>dog <b>{(result.probabilities.dog * 100).toFixed(1)}%</b></span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && <div className="error">{error}</div>}
+
+      {(file || result) && (
+        <button className="reset-btn" onClick={reset}>Try another photo</button>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
