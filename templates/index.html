@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat vs Dog Classifier — VGG16 AI</title>
+    <meta name="description"
+        content="Upload an image and let our VGG16-powered AI classifier determine if it's a cat or a dog with high accuracy.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ======== CSS Reset & Base ======== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #f1f5f9;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --bg-glass: rgba(15, 23, 42, 0.02);
+            --border-glass: rgba(15, 23, 42, 0.08);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --accent-cat: #7c3aed;
+            --accent-cat-glow: rgba(124, 58, 237, 0.15);
+            --accent-dog: #059669;
+            --accent-dog-glow: rgba(5, 150, 105, 0.15);
+            --accent-blue: #2563eb;
+            --accent-pink: #db2777;
+            --accent-orange: #ea580c;
+            --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            --gradient-cat: linear-gradient(135deg, #7c3aed, #9333ea);
+            --gradient-dog: linear-gradient(135deg, #059669, #10b981);
+            --shadow-lg: 0 10px 25px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
+            --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.06);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ======== Background Animation ======== */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-animation .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.08;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .bg-animation .orb:nth-child(1) {
+            width: 500px;
+            height: 500px;
+            background: var(--accent-cat);
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .bg-animation .orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            background: var(--accent-dog);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -7s;
+        }
+
+        .bg-animation .orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            background: var(--accent-blue);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -14s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            25% {
+                transform: translate(60px, -40px) scale(1.1);
+            }
+
+            50% {
+                transform: translate(-30px, 60px) scale(0.95);
+            }
+
+            75% {
+                transform: translate(40px, 30px) scale(1.05);
+            }
+        }
+
+        /* ======== Layout ======== */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px 60px;
+        }
+
+        /* ======== Header ======== */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 100px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            letter-spacing: 0.03em;
+        }
+
+        .header .badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-dog);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.4);
+            }
+        }
+
+        .header h1 {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        /* ======== Stats Cards ======== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+
+        .stat-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            border-color: rgba(15, 23, 42, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-card .stat-value.accent-cat {
+            color: var(--accent-cat);
+        }
+
+        .stat-card .stat-value.accent-dog {
+            color: var(--accent-dog);
+        }
+
+        /* ======== Upload Card ======== */
+        .upload-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            padding: 0;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            backdrop-filter: blur(20px);
+        }
+
+        .upload-inner {
+            padding: 36px 32px;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed rgba(15, 23, 42, 0.12);
+            border-radius: var(--radius-sm);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            border-color: var(--accent-blue);
+            background: rgba(96, 165, 250, 0.04);
+        }
+
+        .drop-zone .icon-upload {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .drop-zone:hover .icon-upload {
+            transform: scale(1.08);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .drop-zone .icon-upload svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .drop-zone h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .drop-zone p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .drop-zone p .browse-link {
+            color: var(--accent-blue);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+
+        /* Preview */
+        .preview-section {
+            display: none;
+            margin-top: 24px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .preview-wrapper {
+            position: relative;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            max-height: 350px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .preview-wrapper img {
+            max-width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .remove-btn:hover {
+            background: rgba(239, 68, 68, 0.8);
+        }
+
+        /* Analyze Button */
+        .analyze-btn {
+            display: none;
+            width: 100%;
+            margin-top: 20px;
+            padding: 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--gradient-primary);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .analyze-btn .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+        }
+
+        .analyze-btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .analyze-btn.loading .btn-text {
+            display: none;
+        }
+
+        .analyze-btn .loading-text {
+            display: none;
+        }
+
+        .analyze-btn.loading .loading-text {
+            display: inline;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ======== Result Card ======== */
+        .result-card {
+            display: none;
+            margin-top: 28px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card.cat-result {
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(192, 132, 252, 0.05));
+            border: 1px solid rgba(167, 139, 250, 0.2);
+        }
+
+        .result-card.dog-result {
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.1), rgba(110, 231, 183, 0.05));
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .result-inner {
+            padding: 28px;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .result-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.7rem;
+            flex-shrink: 0;
+        }
+
+        .cat-result .result-icon {
+            background: rgba(167, 139, 250, 0.15);
+        }
+
+        .dog-result .result-icon {
+            background: rgba(52, 211, 153, 0.15);
+        }
+
+        .result-title h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .result-title p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Probability Bars */
+        .prob-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .prob-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .prob-label {
+            width: 48px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+
+        .prob-bar-track {
+            flex: 1;
+            height: 10px;
+            background: rgba(15, 23, 42, 0.08);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .prob-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 0;
+        }
+
+        .prob-bar-fill.cat-bar {
+            background: var(--gradient-cat);
+        }
+
+        .prob-bar-fill.dog-bar {
+            background: var(--gradient-dog);
+        }
+
+        .prob-value {
+            width: 58px;
+            text-align: right;
+            font-size: 0.9rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Error */
+        .error-msg {
+            display: none;
+            margin-top: 16px;
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            font-size: 0.9rem;
+        }
+
+        /* ======== Footer ======== */
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ======== Futuristic HUD Scanner ======== */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.45);
+            border: 2px solid rgba(0, 242, 254, 0.45);
+            box-shadow: inset 0 0 50px rgba(0, 242, 254, 0.3),
+                0 0 15px rgba(255, 0, 127, 0.2);
+            backdrop-filter: blur(1px);
+        }
+
+        .hud-overlay.scanning {
+            display: block;
+        }
+
+        /* Dual colored neon scan lines */
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(180deg, rgba(0, 242, 254, 0), rgba(0, 242, 254, 1), rgba(0, 242, 254, 0));
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.95), 0 0 40px rgba(0, 242, 254, 0.6);
+            animation: scan1 3s ease-in-out infinite;
+        }
+
+        .scan-line-2 {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(180deg, rgba(255, 0, 127, 0), rgba(255, 0, 127, 1), rgba(255, 0, 127, 0));
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.95), 0 0 40px rgba(255, 0, 127, 0.6);
+            animation: scan2 3s ease-in-out infinite;
+        }
+
+        @keyframes scan1 {
+            0% {
+                top: 0%;
+            }
+
+            50% {
+                top: 100%;
+            }
+
+            100% {
+                top: 0%;
+            }
+        }
+
+        @keyframes scan2 {
+            0% {
+                top: 100%;
+            }
+
+            50% {
+                top: 0%;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+
+        /* Corners with pulsing neon glows */
+        .hud-corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-style: solid;
+            border-width: 0;
+            animation: cornerPulse 1.2s ease-in-out infinite alternate;
+        }
+
+        .top-left {
+            top: 14px;
+            left: 14px;
+            border-top-width: 4px;
+            border-left-width: 4px;
+            border-color: #00f2fe;
+        }
+
+        .top-right {
+            top: 14px;
+            right: 14px;
+            border-top-width: 4px;
+            border-right-width: 4px;
+            border-color: #ff007f;
+        }
+
+        .bottom-left {
+            bottom: 14px;
+            left: 14px;
+            border-bottom-width: 4px;
+            border-left-width: 4px;
+            border-color: #39ff14;
+        }
+
+        .bottom-right {
+            bottom: 14px;
+            right: 14px;
+            border-bottom-width: 4px;
+            border-right-width: 4px;
+            border-color: #ffff00;
+        }
+
+        @keyframes cornerPulse {
+            0% {
+                transform: scale(0.92);
+                opacity: 0.6;
+                filter: drop-shadow(0 0 2px currentColor);
+            }
+
+            100% {
+                transform: scale(1.08);
+                opacity: 1;
+                filter: drop-shadow(0 0 12px currentColor);
+            }
+        }
+
+        /* Central Holographic Target Rings */
+        .hud-target-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            border-radius: 50%;
+            border: 2px dashed rgba(0, 242, 254, 0.4);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.1);
+        }
+
+        .ring-1 {
+            width: 140px;
+            height: 140px;
+            border-color: rgba(0, 242, 254, 0.6);
+            animation: rotateCW 10s linear infinite;
+        }
+
+        .ring-2 {
+            width: 100px;
+            height: 100px;
+            border-color: rgba(255, 0, 127, 0.6);
+            border-style: dotted;
+            animation: rotateCCW 6s linear infinite;
+        }
+
+        .ring-3 {
+            width: 60px;
+            height: 60px;
+            border-color: rgba(57, 255, 20, 0.7);
+            border-style: solid;
+            border-width: 1px;
+            animation: pulseRing 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes rotateCW {
+            from {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        @keyframes rotateCCW {
+            from {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+
+            to {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+        }
+
+        @keyframes pulseRing {
+            0% {
+                transform: translate(-50%, -50%) scale(0.85);
+                opacity: 0.4;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.15);
+                opacity: 0.9;
+                box-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+            }
+        }
+
+        /* Glitch flash effect */
+        .hud-scanner-glitch {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 0, 127, 0.05);
+            opacity: 0;
+            animation: glitchFlash 5s linear infinite;
+        }
+
+        @keyframes glitchFlash {
+
+            0%,
+            95%,
+            100% {
+                opacity: 0;
+            }
+
+            96% {
+                opacity: 0.3;
+                background: rgba(0, 242, 254, 0.1);
+            }
+
+            97% {
+                opacity: 0;
+            }
+
+            98% {
+                opacity: 0.4;
+                background: rgba(255, 0, 127, 0.15);
+            }
+
+            99% {
+                opacity: 0;
+            }
+        }
+
+        /* Matrix Canvas */
+        .pixel-matrix {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.55;
+        }
+
+        /* HUD Status Text overlay */
+        .hud-status {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 18, 0.92);
+            border: 2px solid rgba(0, 242, 254, 0.7);
+            border-radius: 4px;
+            color: #00f2fe;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            font-weight: bold;
+            letter-spacing: 0.12em;
+            padding: 6px 16px;
+            text-transform: uppercase;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.5), inset 0 0 8px rgba(0, 242, 254, 0.2);
+            animation: statusPulse 0.8s step-end infinite;
+            white-space: nowrap;
+            text-shadow: 0 0 5px rgba(0, 242, 254, 0.8);
+        }
+
+        @keyframes statusPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                border-color: rgba(0, 242, 254, 0.7);
+                color: #00f2fe;
+            }
+
+            50% {
+                opacity: 0.8;
+                border-color: rgba(255, 0, 127, 0.7);
+                color: #ff007f;
+                text-shadow: 0 0 5px rgba(255, 0, 127, 0.8);
+            }
+        }
+
+        /* ======== Charts Card ======== */
+        .charts-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 36px;
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            backdrop-filter: blur(20px);
+        }
+
+        .charts-header {
+            margin-bottom: 24px;
+        }
+
+        .charts-header h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 6px;
+        }
+
+        .charts-header p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 28px;
+        }
+
+        .chart-container-wrapper {
+            background: rgba(15, 23, 42, 0.01);
+            border: 1px solid rgba(15, 23, 42, 0.05);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chart-container-wrapper h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 0.02em;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 260px;
+            width: 100%;
+        }
+
+        /* ======== Responsive ======== */
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px 16px 40px;
+            }
+
+            .upload-inner {
+                padding: 24px 18px;
+            }
+
+            .drop-zone {
+                padding: 32px 16px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .charts-card {
+                padding: 16px;
+            }
+
+            .chart-container-wrapper {
+                padding: 12px;
+            }
+
+            .chart-container {
+                height: 220px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background orbs -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="badge">
+                <span class="dot"></span>
+                VGG16 Deep Learning Model
+            </div>
+            <h1>Cat vs Dog Classifier</h1>
+            <p>Upload an image and let our AI analyze whether it's a <strong>cat</strong> or a <strong>dog</strong> with
+                precise confidence scores.</p>
+        </header>
+
+        <!-- Training Stats -->
+        {% if stats %}
+        <section class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-label">Epochs</div>
+                <div class="stat-value">{{ stats.epochs }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Train Acc.</div>
+                <div class="stat-value accent-dog">{{ stats.final_train_acc }}%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Val. Acc.</div>
+                <div class="stat-value accent-cat">{{ stats.final_val_acc }}%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Val. Loss</div>
+                <div class="stat-value">{{ stats.final_val_loss }}</div>
+            </div>
+        </section>
+
+        <!-- Training History Charts -->
+        <div class="charts-card">
+            <div class="charts-header">
+                <h2>📈 Model Training History</h2>
+                <p>Interactive visualization of model accuracy and loss curves over epochs</p>
+            </div>
+            <div class="charts-grid">
+                <div class="chart-container-wrapper">
+                    <h3>Accuracy Curve</h3>
+                    <div class="chart-container">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container-wrapper">
+                    <h3>Loss Curve</h3>
+                    <div class="chart-container">
+                        <canvas id="lossChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Model not loaded warning -->
+        {% if not model_loaded %}
+        <div
+            style="margin-bottom:24px; padding:16px 20px; border-radius:var(--radius-sm); background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.5rem;">⚠️</span>
+            <div>
+                <div style="font-weight:600; color:#d97706; font-size:0.95rem;">Model Not Loaded</div>
+                <div style="color:var(--text-secondary); font-size:0.85rem; margin-top:2px;">
+                    Please run the notebook first to train and save the model (<code>cat_dog_vgg16_model.keras</code>),
+                    then restart the Flask server.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Upload Card -->
+        <div class="upload-card">
+            <div class="upload-inner">
+
+                <!-- Drop Zone -->
+                <div class="drop-zone" id="dropZone">
+                    <div class="icon-upload">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                d="M11 14.586V20h2v-5.414l2.293 2.293 1.414-1.414L12 10.758l-4.707 4.707 1.414 1.414L11 14.586zM20 6h-8l-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2z" />
+                        </svg>
+                    </div>
+                    <h3>Drop your image here</h3>
+                    <p>or <span class="browse-link" id="browseLink">browse files</span> to upload</p>
+                    <p style="margin-top:6px;">PNG, JPG, JPEG, GIF, BMP, WebP</p>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+
+                <!-- Preview -->
+                <div class="preview-section" id="previewSection">
+                    <div class="preview-wrapper">
+                        <img id="previewImg" src="" alt="Preview">
+                        <!-- Futuristic HUD Scanner Overlay -->
+                        <div class="hud-overlay" id="hudOverlay">
+                            <div class="scan-line"></div>
+                            <div class="scan-line-2"></div>
+                            <div class="hud-corner top-left"></div>
+                            <div class="hud-corner top-right"></div>
+                            <div class="hud-corner bottom-left"></div>
+                            <div class="hud-corner bottom-right"></div>
+                            <div class="hud-target-circle ring-1"></div>
+                            <div class="hud-target-circle ring-2"></div>
+                            <div class="hud-target-circle ring-3"></div>
+                            <div class="hud-scanner-glitch"></div>
+                            <canvas class="pixel-matrix" id="pixelMatrix"></canvas>
+                            <div class="hud-status" id="hudStatus">STANDBY</div>
+                        </div>
+                        <button class="remove-btn" id="removeBtn" title="Remove image">✕</button>
+                    </div>
+                </div>
+
+                <!-- Analyze Button -->
+                <button class="analyze-btn" id="analyzeBtn" disabled>
+                    <span class="spinner"></span>
+                    <span class="btn-text">🔍 Analyze Image</span>
+                    <span class="loading-text">Analyzing...</span>
+                </button>
+
+                <!-- Error -->
+                <div class="error-msg" id="errorMsg"></div>
+
+                <!-- Result -->
+                <div class="result-card" id="resultCard">
+                    <div class="result-inner">
+                        <div class="result-header">
+                            <div class="result-icon" id="resultIcon"></div>
+                            <div class="result-title">
+                                <h3 id="resultLabel"></h3>
+                                <p id="resultConfidence"></p>
+                            </div>
+                        </div>
+                        <div class="prob-bars">
+                            <div class="prob-item">
+                                <span class="prob-label" style="color:var(--accent-cat)">Cat</span>
+                                <div class="prob-bar-track">
+                                    <div class="prob-bar-fill cat-bar" id="catBar"></div>
+                                </div>
+                                <span class="prob-value" id="catValue">0%</span>
+                            </div>
+                            <div class="prob-item">
+                                <span class="prob-label" style="color:var(--accent-dog)">Dog</span>
+                                <div class="prob-bar-track">
+                                    <div class="prob-bar-fill dog-bar" id="dogBar"></div>
+                                </div>
+                                <span class="prob-value" id="dogValue">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            Powered by <strong>TensorFlow</strong> &amp; <strong>VGG16</strong> &mdash; Built with <a
+                href="https://flask.palletsprojects.com/" target="_blank">Flask</a>
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const browseLink = document.getElementById('browseLink');
+            const previewSection = document.getElementById('previewSection');
+            const previewImg = document.getElementById('previewImg');
+            const removeBtn = document.getElementById('removeBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const resultCard = document.getElementById('resultCard');
+            const errorMsg = document.getElementById('errorMsg');
+
+            let selectedFile = null;
+
+            // Browse click
+            browseLink.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+            });
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            // File input change
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) handleFile(e.target.files[0]);
+            });
+
+            // Drag & Drop
+            ['dragenter', 'dragover'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('drag-over');
+                });
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('drag-over');
+                });
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+            });
+
+            function handleFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    showError('Please select a valid image file.');
+                    return;
+                }
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    previewImg.src = ev.target.result;
+                    previewSection.style.display = 'block';
+                    dropZone.style.display = 'none';
+                    analyzeBtn.style.display = 'block';
+                    analyzeBtn.disabled = false;
+                    hideError();
+                    hideResult();
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Remove image
+            removeBtn.addEventListener('click', () => {
+                selectedFile = null;
+                fileInput.value = '';
+                previewSection.style.display = 'none';
+                dropZone.style.display = 'block';
+                analyzeBtn.style.display = 'none';
+                hideResult();
+                hideError();
+            });
+
+            let scanAnimFrame = null;
+            let hudStatusInterval = null;
+
+            function startScannerAnimation() {
+                const overlay = document.getElementById('hudOverlay');
+                const statusTxt = document.getElementById('hudStatus');
+                const canvas = document.getElementById('pixelMatrix');
+
+                overlay.classList.add('scanning');
+
+                // Adjust canvas size to match layout
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                const ctx = canvas.getContext('2d');
+                const fontSize = 11;
+                const columns = Math.floor(canvas.width / 14);
+                const drops = Array(columns).fill(0);
+
+                // Binary, Hex, & Tech characters
+                const chars = "0101010101ABCDEF0123456789<>[]{}+-*%#@!";
+
+                // Neon colors matching the corners
+                const colors = ['#00f2fe', '#ff007f', '#39ff14', '#ffff00'];
+
+                // Helper for electrical sparks
+                function drawLightning(startX, startY, endX, endY, segments, color) {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    let currentX = startX;
+                    let currentY = startY;
+
+                    for (let i = 1; i < segments; i++) {
+                        const progress = i / segments;
+                        // Interpolate with random displacement
+                        const targetX = startX + (endX - startX) * progress + (Math.random() - 0.5) * 40;
+                        const targetY = startY + (endY - startY) * progress + (Math.random() - 0.5) * 40;
+
+                        ctx.lineTo(targetX, targetY);
+                        currentX = targetX;
+                        currentY = targetY;
+                    }
+                    ctx.lineTo(endX, endY);
+
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = Math.random() * 2 + 1;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 15;
+                    ctx.stroke();
+                    // Reset shadow
+                    ctx.shadowBlur = 0;
+                }
+
+                function drawMatrix() {
+                    // Clear with translucent background to create trails
+                    ctx.fillStyle = 'rgba(10, 10, 18, 0.12)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Draw background analyzer grid
+                    ctx.strokeStyle = 'rgba(0, 242, 254, 0.05)';
+                    ctx.lineWidth = 1;
+                    const gridSize = 30;
+                    for (let x = 0; x < canvas.width; x += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, canvas.height);
+                        ctx.stroke();
+                    }
+                    for (let y = 0; y < canvas.height; y += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(canvas.width, y);
+                        ctx.stroke();
+                    }
+
+                    // Draw Matrix characters
+                    ctx.font = `bold ${fontSize}px monospace`;
+
+                    for (let i = 0; i < drops.length; i++) {
+                        const text = chars[Math.floor(Math.random() * chars.length)];
+                        const x = i * 14;
+                        const y = drops[i] * fontSize;
+
+                        // Assign random neon color to column
+                        ctx.fillStyle = colors[(i + Math.floor(y / 20)) % colors.length];
+                        ctx.fillText(text, x, y);
+
+                        if (y > canvas.height && Math.random() > 0.985) {
+                            drops[i] = 0;
+                        }
+                        drops[i]++;
+                    }
+
+                    // Randomly trigger neon lightning/sparks
+                    if (Math.random() > 0.88) {
+                        const startX = Math.random() * canvas.width;
+                        const startY = Math.random() * canvas.height;
+                        const endX = startX + (Math.random() - 0.5) * 120;
+                        const endY = startY + (Math.random() - 0.5) * 120;
+                        const segments = Math.floor(Math.random() * 5) + 4;
+                        const randColor = colors[Math.floor(Math.random() * colors.length)];
+                        drawLightning(startX, startY, endX, endY, segments, randColor);
+                    }
+
+                    scanAnimFrame = requestAnimationFrame(drawMatrix);
+                }
+                drawMatrix();
+
+                // Futuristic status text cycles
+                const statuses = [
+                    "INIT: CONNECTING COGNITIVE CHANNELS",
+                    "LOAD: PARSING VGG16 WEIGHT TENSOR",
+                    "RESOLVE: INPUT MATRIX 224x224x3 [RGB]",
+                    "STAGE 1: KERNELS EXTRACTING BLOCKS 1/2",
+                    "FILTER: MULTI-CHANNEL EDGE RESOLUTION",
+                    "STAGE 2: MAX-POOLING FEATURE SPACE",
+                    "STAGE 3: CONVOLUTIONS BLOCK 4/5 [512CH]",
+                    "EXTRACT: HIERARCHICAL CLASS DETECTORS",
+                    "TENSOR: COMPUTING FULLY CONNECTED NODES",
+                    "DENSE: CALCULATING DROP-OUT INHIBITIONS",
+                    "SOFTMAX: ESTIMATING TENSOR COEFFICIENTS"
+                ];
+                let idx = 0;
+                statusTxt.textContent = statuses[0];
+                hudStatusInterval = setInterval(() => {
+                    idx = (idx + 1) % statuses.length;
+                    statusTxt.textContent = statuses[idx];
+                }, 600); // Slower, more readable status cycles
+            }
+
+            function stopScannerAnimation() {
+                const overlay = document.getElementById('hudOverlay');
+                overlay.classList.remove('scanning');
+
+                if (scanAnimFrame) {
+                    cancelAnimationFrame(scanAnimFrame);
+                    scanAnimFrame = null;
+                }
+                if (hudStatusInterval) {
+                    clearInterval(hudStatusInterval);
+                    hudStatusInterval = null;
+                }
+            }
+
+            // Analyze
+            analyzeBtn.addEventListener('click', async () => {
+                if (!selectedFile) return;
+                analyzeBtn.classList.add('loading');
+                analyzeBtn.disabled = true;
+                hideError();
+                hideResult();
+                startScannerAnimation();
+
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+
+                const startTime = Date.now();
+
+                try {
+                    const resp = await fetch('/predict', { method: 'POST', body: formData });
+                    const data = await resp.json();
+
+                    // Extended scanning animation to 7.5 seconds for incredible cinematic experience
+                    const elapsed = Date.now() - startTime;
+                    const minScanTime = 7500;
+                    if (elapsed < minScanTime) {
+                        await new Promise(r => setTimeout(r, minScanTime - elapsed));
+                    }
+
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        showResult(data);
+                    }
+                } catch (err) {
+                    showError('Network error. Make sure the server is running.');
+                } finally {
+                    stopScannerAnimation();
+                    analyzeBtn.classList.remove('loading');
+                    analyzeBtn.disabled = false;
+                }
+            });
+
+            function showResult(data) {
+                const isCat = data.class === 'cats';
+                resultCard.className = 'result-card ' + (isCat ? 'cat-result' : 'dog-result');
+                resultCard.style.display = 'block';
+
+                document.getElementById('resultIcon').textContent = isCat ? '🐱' : '🐶';
+                document.getElementById('resultLabel').textContent = isCat ? "It's a Cat!" : "It's a Dog!";
+                document.getElementById('resultConfidence').textContent = `Confidence: ${data.confidence}%`;
+
+                // Animate bars
+                setTimeout(() => {
+                    document.getElementById('catBar').style.width = data.cat_probability + '%';
+                    document.getElementById('dogBar').style.width = data.dog_probability + '%';
+                }, 50);
+                document.getElementById('catValue').textContent = data.cat_probability + '%';
+                document.getElementById('dogValue').textContent = data.dog_probability + '%';
+            }
+
+            function hideResult() {
+                resultCard.style.display = 'none';
+                document.getElementById('catBar').style.width = '0';
+                document.getElementById('dogBar').style.width = '0';
+            }
+
+            function showError(msg) {
+                errorMsg.textContent = msg;
+                errorMsg.style.display = 'block';
+            }
+            function hideError() {
+                errorMsg.style.display = 'none';
+            }
+        })();
+    </script>
+
+    {% if training_history %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const historyData = {{ training_history| tojson | safe
+        }};
+        if (!historyData) return;
+
+        const epochs = Array.from({ length: historyData.accuracy.length }, (_, i) => `Epoch ${i + 1}`);
+
+        // Chart common options
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#475569',
+                        font: {
+                            family: 'Inter',
+                            size: 12,
+                            weight: '500'
+                        },
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    titleColor: '#f3f4f6',
+                    bodyColor: '#9ca3af',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: { family: 'Inter', weight: 'bold' },
+                    bodyFont: { family: 'Inter' },
+                    displayColors: true
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(15, 23, 42, 0.04)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#475569',
+                        font: { family: 'Inter', size: 11 }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(15, 23, 42, 0.06)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#475569',
+                        font: { family: 'Inter', size: 11 }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false
+            }
+        };
+
+        // Accuracy Chart
+        const ctxAcc = document.getElementById('accuracyChart').getContext('2d');
+        new Chart(ctxAcc, {
+            type: 'line',
+            data: {
+                labels: epochs,
+                datasets: [
+                    {
+                        label: 'Training Accuracy',
+                        data: historyData.accuracy.map(val => val * 100),
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true,
+                        pointBackgroundColor: '#34d399',
+                        pointHoverRadius: 6,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Validation Accuracy',
+                        data: historyData.val_accuracy.map(val => val * 100),
+                        borderColor: '#a78bfa',
+                        backgroundColor: 'rgba(167, 139, 250, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true,
+                        pointBackgroundColor: '#a78bfa',
+                        pointHoverRadius: 6,
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    ...chartOptions.scales,
+                    y: {
+                        ...chartOptions.scales.y,
+                        ticks: {
+                            ...chartOptions.scales.y.ticks,
+                            callback: function (value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    ...chartOptions.plugins,
+                    tooltip: {
+                        ...chartOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function (context) {
+                                return ` ${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Loss Chart
+        const ctxLoss = document.getElementById('lossChart').getContext('2d');
+        new Chart(ctxLoss, {
+            type: 'line',
+            data: {
+                labels: epochs,
+                datasets: [
+                    {
+                        label: 'Training Loss',
+                        data: historyData.loss,
+                        borderColor: '#fb923c',
+                        backgroundColor: 'rgba(251, 146, 60, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true,
+                        pointBackgroundColor: '#fb923c',
+                        pointHoverRadius: 6,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Validation Loss',
+                        data: historyData.val_loss,
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: true,
+                        pointBackgroundColor: '#60a5fa',
+                        pointHoverRadius: 6,
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                ...chartOptions,
+                plugins: {
+                    ...chartOptions.plugins,
+                    tooltip: {
+                        ...chartOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function (context) {
+                                return ` ${context.dataset.label}: ${context.raw.toFixed(4)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        });
+    </script>
+    {% endif %}
+</body>
+
+</html>
